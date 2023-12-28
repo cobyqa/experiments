@@ -1,0 +1,3 @@
+[submodule "solar"]
+	path = solar
+	url = https://github.com/bbopt/solar.git
