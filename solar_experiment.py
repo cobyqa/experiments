@@ -108,4 +108,11 @@ def solve(pb_id, i_restart):
 
 
 if __name__ == '__main__':
-    Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(10)))
+    n_restart = 10
+    # Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart)))
+    for i_restart in range(n_restart):
+        try:
+            fun_history = np.load(Path(__file__).parent / 'out' / f'solar10_{i_restart}' / 'fun_history.npy')
+            print(f'SOLAR10({i_restart}): {np.min(fun_history)}')
+        except FileNotFoundError:
+            print(f'SOLAR10({i_restart}) not solved')
