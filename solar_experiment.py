@@ -1,10 +1,12 @@
 import re
 import subprocess
 import tempfile
+from itertools import product
 from pathlib import Path
 
 import numpy as np
 from cobyqa import minimize
+from joblib import Parallel, delayed
 
 
 class SOLARProblem:
@@ -24,6 +26,10 @@ class SOLARProblem:
             raise FileNotFoundError('solar executable not found')
 
         self._history = {}
+
+    @property
+    def n(self):
+        return self.x0.size
 
     @property
     def x0(self):
@@ -85,22 +91,21 @@ class SOLARProblem:
         return output
 
 
+@delayed
+def solve(pb_id, i_restart):
+    print(f'Solving SOLAR{pb_id}({i_restart})')
+
+    rng = np.random.default_rng(i_restart)
+    p = SOLARProblem(pb_id)
+    x0 = np.clip(p.x0 + rng.normal(0.0, 1.0, p.n), p.xl, p.xu)
+    res = minimize(p.fun, x0, xl=p.xl, xu=p.xu, cub=p.cub, options={'store_history': True})
+
+    output = Path(__file__).parent / 'out' / f'solar{pb_id}_{i_restart}'
+    output.mkdir(parents=True, exist_ok=True)
+    np.save(output / 'fun_history.npy', res.fun_history)
+    np.save(output / 'cub_history.npy', res.cub_history)
+    print(f'Results saved in {output}')
+
+
 if __name__ == '__main__':
-    for pb_id in [6, 10]:
-        print(f'Solving SOLAR{pb_id}')
-        print()
-
-        p = SOLARProblem(pb_id)
-        options = {
-            'verbose': True,
-            'store_history': True,
-        }
-        res = minimize(p.fun, p.x0, xl=p.xl, xu=p.xu, cub=p.cub, options=options)
-
-        output = Path(__file__).parent / 'out' / f'solar{pb_id}'
-        output.mkdir(parents=True, exist_ok=True)
-        np.save(output / 'fun_history.npy', res.fun_history)
-        np.save(output / 'cub_history.npy', res.cub_history)
-        print()
-        print(f'Results saved in {output}')
-        print()
+    Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(10)))
