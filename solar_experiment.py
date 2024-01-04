@@ -1,9 +1,11 @@
+import pickle
 import re
 import subprocess
-import tempfile
 from enum import Enum
 from itertools import product
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+from time import time
 
 import numpy as np
 from cobyqa import minimize
@@ -75,8 +77,7 @@ class SOLARProblem:
         lines = output.splitlines()
         raw_params = {}
         for line in lines[lines.index('NOMAD parameters:') + 2:]:
-            prog = re.compile(r'^\s*(?P<param>[A-Z0-9_]+)\s*(?P<value>.*)$')
-            match = prog.match(line)
+            match = re.compile(r'^\s*(?P<param>[A-Z0-9_]+)\s*(?P<value>.*)$').match(line)
             if match:
                 raw_params[match.group('param')] = match.group('value')
         return raw_params
@@ -97,11 +98,17 @@ class SOLARProblem:
         return array
 
     def _eval(self, x):
+        if not isinstance(x, dict):
+            if hasattr(x, '__len__'):
+                x = {f'x{i + 1}': x[i] for i in range(self.n)}
+            else:
+                raise ValueError('x must be a dict or an array-like')
+
         x_str = ' '.join(map(str, x.values()))
         if x_str in self._history:
             return self._history[x_str]
 
-        with tempfile.NamedTemporaryFile(delete_on_close=False) as f:
+        with NamedTemporaryFile(delete_on_close=False) as f:
             f.write(str.encode(x_str))
             f.close()
             result = subprocess.run([self._path_solar, str(self._pb_id), f.name], stdout=subprocess.PIPE)
@@ -114,38 +121,39 @@ class SOLARProblem:
         return self._history[x_str]
 
 
+def get_saving_path(pb_id, i_restart):
+    output = Path(__file__).parent / 'out'
+    output.mkdir(exist_ok=True)
+    return output / f'solar{pb_id}_{i_restart}.p'
+
+
 @delayed
 def solve(pb_id, i_restart):
     print(f'Solving SOLAR{pb_id}({i_restart})')
+    p = SOLARProblem(pb_id)
 
     rng = np.random.default_rng(i_restart)
-    p = SOLARProblem(pb_id)
-    x0 = np.clip(p.x0 + rng.normal(0.0, 1.0, p.n), p.xl, p.xu)
-    res = minimize(p.fun, x0, xl=p.xl, xu=p.xu, cub=p.cub, options={'store_history': True})
+    xl = list(p.xl.values())
+    xu = list(p.xu.values())
+    x0_rand = rng.uniform(xl, xu)
 
-    output = Path(__file__).parent / 'out' / f'solar{pb_id}_{i_restart}'
-    output.mkdir(parents=True, exist_ok=True)
-    np.save(output / 'fun_history.npy', res.fun_history)
-    np.save(output / 'cub_history.npy', res.cub_history)
-    print(f'Results saved in {output}')
+    time_start = time()
+    res = minimize(p.fun, x0_rand, xl=xl, xu=xu, cub=p.cub, options={'store_history': True})
+    res.time = time() - time_start
+
+    saving_path = get_saving_path(pb_id, i_restart)
+    with open(saving_path, 'wb') as f:
+        pickle.dump(res, f)
+    print(f'Results for SOLAR{pb_id}({i_restart}) saved in {saving_path}')
 
 
 if __name__ == '__main__':
-    p = SOLARProblem(1)
-    print(p.fun(p.x0))
-    print(p.cub(p.x0))
-    print(p.fun(p.x0))
-    # n_restart = 10
-    # # Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart)))
-    # for pb_id in [6, 10]:
-    #     for i_restart in range(n_restart):
-    #         try:
-    #             output = Path(__file__).parent / 'out' / f'solar{pb_id}_{i_restart}'
-    #             fun_history = np.load(output / 'fun_history.npy')
-    #             cub_history = np.load(output / 'cub_history.npy')
-    #             if cub_history.size > 0:
-    #                 maxcv_history = np.max(cub_history, 1, initial=0.0)
-    #                 fun_history = fun_history[maxcv_history <= 0.0]
-    #             print(f'SOLAR{pb_id}({i_restart}): {np.min(fun_history)}')
-    #         except FileNotFoundError:
-    #             print(f'SOLAR{pb_id}({i_restart}): not solved')
+    n_restart = 32
+    Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart)))
+    print()
+    print('Results:')
+    for pb_id in [6, 10]:
+        for i_restart in range(n_restart):
+            with open(get_saving_path(pb_id, i_restart), 'rb') as f:
+                res = pickle.load(f)
+                print(f'SOLAR{pb_id}({i_restart}): fun={res.fun}, maxcv={res.maxcv}, nfev={res.nfev}, time={res.time}')
