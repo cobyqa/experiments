@@ -1,15 +1,17 @@
 import pickle
 import re
 import subprocess
+import time
 from enum import Enum
 from itertools import product
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from time import time
 
 import numpy as np
 from cobyqa import minimize
 from joblib import Parallel, delayed
+
+from utils import get_logger
 
 
 class SOLARInputType(str, Enum):
@@ -130,7 +132,9 @@ class SOLARProblem:
             if obj.size == 1:
                 return obj[0]
             return obj
-        except:
+        except Exception as err:
+            logger = get_logger(__name__)
+            logger.warning(f'Evaluation of SOLAR{self._pb_id} at {x} failed: {err}')
             return np.inf
 
     def cub(self, x):
@@ -149,7 +153,9 @@ class SOLARProblem:
         """
         try:
             return self._eval(x)[1]
-        except:
+        except Exception as err:
+            logger = get_logger(__name__)
+            logger.warning(f'Evaluation of SOLAR{self._pb_id} at {x} failed: {err}')
             output_types = self._raw_params['BB_OUTPUT_TYPE'].split()
             return np.full(len([output_type for output_type in output_types if output_type == SOLAROutputType.CONSTRAINT]), np.inf)
 
@@ -269,7 +275,7 @@ def get_saving_path(pb_id, i_restart):
     """
     output = Path(__file__).parent / 'out' / 'solar'
     output.mkdir(parents=True, exist_ok=True)
-    return output / f'solar{pb_id}_{i_restart}.p'
+    return output / f'solar{pb_id}_{i_restart}.pickle'
 
 
 @delayed
@@ -284,12 +290,17 @@ def solve(pb_id, i_restart):
     i_restart : int
         Restart identifier.
     """
-    print(f'Solving SOLAR{pb_id}({i_restart})')
+    logger = get_logger(__name__)
+    logger.info(f'Starting the computations for SOLAR{pb_id}({i_restart})')
     p = SOLARProblem(pb_id)
 
     def fun(x):
         """Wrapper for the objective function."""
         return p.fun({f'x{i + 1}': x[i] for i in range(p.n)})
+
+    def cub(x):
+        """Wrapper for the constraint function."""
+        return p.cub({f'x{i + 1}': x[i] for i in range(p.n)})
 
     # Generate a random initial guess.
     rng = np.random.default_rng(i_restart)
@@ -298,27 +309,33 @@ def solve(pb_id, i_restart):
     x0_rand = rng.uniform(xl, xu)
 
     # Solve the problem.
-    time_start = time()
-    res = minimize(fun, x0_rand, xl=xl, xu=xu, cub=p.cub, options={'store_history': True})
-    res.time = time() - time_start
+    time_start = time.time()
+    res = minimize(fun, x0_rand, xl=xl, xu=xu, cub=cub, options={'store_history': True})
+    res.time = time.time() - time_start
 
     # Save the results.
     saving_path = get_saving_path(pb_id, i_restart)
     with open(saving_path, 'wb') as f:
         pickle.dump(res, f)
-    print(f'Results for SOLAR{pb_id}({i_restart}) saved in {saving_path}')
+    logger.info(f'Results for SOLAR{pb_id}({i_restart}) saved in {saving_path}')
 
 
 if __name__ == '__main__':
     # Solve the problems 6 and 10 with 32 random restarts.
     n_restart = 32
     Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart)))
+    time.sleep(1)  # wait for the logging messages to be printed.
 
     # Print the results.
-    print()
-    print('Results:')
     for pb_id in [6, 10]:
+        print()
+        print(f'Results for SOLAR{pb_id}:')
+        print()
+        print('+---------+--------------------+----------------------+----------------------+------------------+')
+        print('| Restart | Objective function | Constraint violation | Function evaluations | Computation time |')
+        print('+---------+--------------------+----------------------+----------------------+------------------+')
         for i_restart in range(n_restart):
             with open(get_saving_path(pb_id, i_restart), 'rb') as f:
                 res = pickle.load(f)
-                print(f'SOLAR{pb_id}({i_restart}): fun={res.fun}, maxcv={res.maxcv}, nfev={res.nfev}, time={res.time}')
+                print(f'| {i_restart:^7} | {res.fun:^18.4e} | {res.maxcv:^20.4e} | {res.nfev:^20} | {res.time:^16.4e} |')
+        print('+---------+--------------------+----------------------+----------------------+------------------+')
