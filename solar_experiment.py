@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 from cobyqa import minimize
 from joblib import Parallel, delayed
+from scipy.optimize import Bounds, NonlinearConstraint
 
 from utils import get_logger
 
@@ -78,6 +79,19 @@ class SOLARProblem:
         return int(self._raw_params['DIMENSION'])
 
     @property
+    def m(self):
+        """
+        Number of constraints.
+
+        Returns
+        -------
+        int
+            Number of constraints.
+        """
+        output_types = self._raw_params['BB_OUTPUT_TYPE'].split()
+        return len([output_type for output_type in output_types if output_type == SOLAROutputType.CONSTRAINT])
+
+    @property
     def x0(self):
         """
         Initial guess.
@@ -137,9 +151,9 @@ class SOLARProblem:
             logger.warning(f'Evaluation of SOLAR{self._pb_id} at {x} failed: {err}')
             return np.inf
 
-    def cub(self, x):
+    def con(self, x):
         """
-        Evaluate the constraints ``cub(x) <= 0``.
+        Evaluate the constraints ``con(x) <= 0``.
 
         Parameters
         ----------
@@ -156,8 +170,7 @@ class SOLARProblem:
         except Exception as err:
             logger = get_logger(__name__)
             logger.warning(f'Evaluation of SOLAR{self._pb_id} at {x} failed: {err}')
-            output_types = self._raw_params['BB_OUTPUT_TYPE'].split()
-            return np.full(len([output_type for output_type in output_types if output_type == SOLAROutputType.CONSTRAINT]), np.inf)
+            return np.full(self.m, np.inf)
 
     def _get_raw_params(self):
         """
@@ -298,9 +311,9 @@ def solve(pb_id, i_restart):
         """Wrapper for the objective function."""
         return p.fun({f'x{i + 1}': x[i] for i in range(p.n)})
 
-    def cub(x):
+    def con(x):
         """Wrapper for the constraint function."""
-        return p.cub({f'x{i + 1}': x[i] for i in range(p.n)})
+        return p.con({f'x{i + 1}': x[i] for i in range(p.n)})
 
     # Generate a random initial guess.
     rng = np.random.default_rng(i_restart)
@@ -309,8 +322,10 @@ def solve(pb_id, i_restart):
     x0_rand = rng.uniform(xl, xu)
 
     # Solve the problem.
+    bounds = Bounds(xl, xu)
+    constraints = NonlinearConstraint(con, -np.inf, np.zeros(p.m))
     time_start = time.time()
-    res = minimize(fun, x0_rand, xl=xl, xu=xu, cub=cub, options={'store_history': True})
+    res = minimize(fun, x0_rand, bounds=bounds, constraints=constraints, options={'store_history': True})
     res.time = time.time() - time_start
 
     # Save the results.
