@@ -365,7 +365,7 @@ if __name__ == '__main__':
     # Solve the problems 6 and 10 with 32 random restarts.
     n_restart = 32
     with Pool() as p:
-        p.starmap(solve, [(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart))])
+        p.starmap(solve, product([6, 10], range(n_restart)))
     time.sleep(1)  # wait for the logging messages to be printed.
 
     # Print the results.
