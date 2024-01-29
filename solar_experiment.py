@@ -1,18 +1,17 @@
+import logging
 import pickle
 import re
 import subprocess
 import time
 from enum import Enum
 from itertools import product
+from multiprocessing import Pool
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import numpy as np
 from cobyqa import minimize
-from joblib import Parallel, delayed
 from scipy.optimize import Bounds, NonlinearConstraint
-
-from utils import get_logger
 
 
 class SOLARInputType(str, Enum):
@@ -270,6 +269,34 @@ class SOLARProblem:
         return self._history[x_str]
 
 
+def get_logger(name=None, level=logging.INFO):
+    """
+    Get a logger.
+
+    Parameters
+    ----------
+    name : str
+        Name of the logger.
+    level : int
+        Logging level.
+
+    Returns
+    -------
+    `logging.Logger`
+        Logger with the given name. If a logger with the given name already
+        exists, it is returned instead of creating a new one.
+    """
+    logger = logging.getLogger(name)
+    if len(logger.handlers) == 0:
+        logger.setLevel(level)
+
+        # Attach a console handler (thread-safe).
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('[%(levelname)-8s] %(message)s'))
+        logger.addHandler(handler)
+    return logger
+
+
 def get_saving_path(pb_id, i_restart):
     """
     Get the path where to save the results of a SOLAR problem.
@@ -291,7 +318,6 @@ def get_saving_path(pb_id, i_restart):
     return output / f'solar{pb_id}_{i_restart}.pickle'
 
 
-@delayed
 def solve(pb_id, i_restart):
     """
     Solve a SOLAR problem.
@@ -338,7 +364,8 @@ def solve(pb_id, i_restart):
 if __name__ == '__main__':
     # Solve the problems 6 and 10 with 32 random restarts.
     n_restart = 32
-    Parallel(n_jobs=-1)(solve(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart)))
+    with Pool() as p:
+        p.starmap(solve, [(pb_id, i_restart) for pb_id, i_restart in product([6, 10], range(n_restart))])
     time.sleep(1)  # wait for the logging messages to be printed.
 
     # Print the results.
