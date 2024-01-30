@@ -1,2 +1,6 @@
 cobyqa==1.0.1
 numpy==1.26.3
+optiprofiler==1.0.dev0
+pdfo==2.0.1
+pycutest==1.6.0
+scipy==1.12.0
