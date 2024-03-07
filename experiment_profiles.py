@@ -130,3 +130,8 @@ if __name__ == '__main__':
     run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='nonlinearly-constrained')
     run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='nonlinearly-constrained')
     run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='nonlinearly-constrained')
+
+    # Run the benchmark on all problems.
+    cutest_problem_names = find_cutest_problems('unconstrained bound adjacency linear quadratic other')
+    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='all')
+    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='all')
