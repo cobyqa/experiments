@@ -115,15 +115,15 @@ if __name__ == '__main__':
 
     # Run the benchmark on all bound-constrained problems.
     cutest_problem_names = find_cutest_problems('bound')
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='bound-constrained')
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='bound-constrained')
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='bound-constrained')
+    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='bound-constrained', project_x0=True)
+    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='bound-constrained', project_x0=True)
+    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='bound-constrained', project_x0=True)
 
     # Run the benchmark on all linearly constrained problems.
     cutest_problem_names = find_cutest_problems('adjacency linear')
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, benchmark_id='linearly-constrained')
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='linearly-constrained')
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='linearly-constrained')
+    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, benchmark_id='linearly-constrained', project_x0=True)
+    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='linearly-constrained', project_x0=True)
+    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='linearly-constrained', project_x0=True)
 
     # Run the benchmark on all nonlinearly constrained problems.
     cutest_problem_names = find_cutest_problems('quadratic other')
