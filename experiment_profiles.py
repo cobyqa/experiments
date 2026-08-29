@@ -22,7 +22,7 @@ def newuoa(fun, x0):
     return res.x
 
 
-def bobyqa(fun, x0, lb, ub):
+def bobyqa(fun, x0, lb=None, ub=None):
     """
     Solve a bound-constrained optimization problem using BOBYQA.
     """
@@ -31,7 +31,7 @@ def bobyqa(fun, x0, lb, ub):
     return res.x
 
 
-def pybobyqa(fun, x0, lb, ub):
+def pybobyqa(fun, x0, lb=None, ub=None):
     """
     Solve a bound-constrained optimization problem using Py-BOBYQA.
     """
@@ -39,7 +39,7 @@ def pybobyqa(fun, x0, lb, ub):
     return res.x
 
 
-def lincoa(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq):
+def lincoa(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None):
     """
     Solve a linearly constrained optimization problem using LINCOA.
     """
@@ -49,7 +49,7 @@ def lincoa(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq):
     return res.x
 
 
-def cobyla(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq, c_ub, c_eq):
+def cobyla(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None, c_ub=None, c_eq=None):
     """
     Solve a nonlinearly constrained optimization problem using COBYLA.
     """
@@ -61,7 +61,7 @@ def cobyla(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq, c_ub, c_eq):
     return res.x
 
 
-def cobyqa(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq, c_ub, c_eq):
+def cobyqa(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None, c_ub=None, c_eq=None):
     """
     Solve a nonlinearly constrained optimization problem using COBYQA.
     """
@@ -76,6 +76,8 @@ def _build_bounds(lb, ub):
     """
     Build the bound constraints.
     """
+    if lb is None or ub is None:
+        return None
     return Bounds(lb, ub)
 
 
@@ -84,10 +86,12 @@ def _build_linear_constraints(a_ub, b_ub, a_eq, b_eq):
     Build the linear constraints.
     """
     constraints = []
-    if b_ub.size > 0:
-        constraints.append(LinearConstraint(a_ub, -np.inf, b_ub))
-    if b_eq.size > 0:
-        constraints.append(LinearConstraint(a_eq, b_eq, b_eq))
+    if a_ub is not None and b_ub is not None:
+        if b_ub.size > 0:
+            constraints.append(LinearConstraint(a_ub, -np.inf, b_ub))
+    if a_eq is not None and b_eq is not None:
+        if b_eq.size > 0:
+            constraints.append(LinearConstraint(a_eq, b_eq, b_eq))
     return constraints
 
 
@@ -96,12 +100,14 @@ def _build_nonlinear_constraints(c_ub, c_eq, x0):
     Build the nonlinear constraints.
     """
     constraints = []
-    c_ub_x0 = c_ub(x0)
-    if c_ub_x0.size > 0:
-        constraints.append(NonlinearConstraint(c_ub, -np.inf, np.zeros_like(c_ub_x0)))
-    c_eq_x0 = c_eq(x0)
-    if c_eq_x0.size > 0:
-        constraints.append(NonlinearConstraint(c_eq, np.zeros_like(c_eq_x0), np.zeros_like(c_eq_x0)))
+    if c_ub is not None:
+        c_ub_x0 = c_ub(x0)
+        if c_ub_x0.size > 0:
+            constraints.append(NonlinearConstraint(c_ub, -np.inf, np.zeros_like(c_ub_x0)))
+    if c_eq is not None:
+        c_eq_x0 = c_eq(x0)
+        if c_eq_x0.size > 0:
+            constraints.append(NonlinearConstraint(c_eq, np.zeros_like(c_eq_x0), np.zeros_like(c_eq_x0)))
     return constraints
 
 
@@ -113,6 +119,7 @@ if __name__ == '__main__':
         benchmark_id='out_unconstrained',
         maxdim=50,
     )
+    exit(0)
     benchmark(
         [cobyqa, newuoa, cobyla],
         solver_names=['COBYQA', 'NEWUOA', 'COBYLA'],
