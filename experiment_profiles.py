@@ -111,7 +111,7 @@ if __name__ == '__main__':
         [cobyqa, newuoa, cobyla],
         solver_names=['COBYQA', 'NEWUOA', 'COBYLA'],
         benchmark_id='out_unconstrained',
-        maxdim=3,
+        maxdim=50,
     )
     benchmark(
         [cobyqa, newuoa, cobyla],
