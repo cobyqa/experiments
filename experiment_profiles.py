@@ -1,9 +1,9 @@
 import numpy as np
 from cobyqa import minimize as cobyqa_minimize
-from optiprofiler import set_cutest_problem_options, find_cutest_problems, run_benchmark
+from optiprofiler import benchmark
 from pdfo import pdfo as pdfo_minimize
 from pybobyqa import solve as pybobyqa_minimize
-from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
+from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint, minimize as scipy_minimize
 
 
 def uobyqa(fun, x0):
@@ -56,7 +56,8 @@ def cobyla(fun, x0, lb, ub, a_ub, b_ub, a_eq, b_eq, c_ub, c_eq):
     bounds = _build_bounds(lb, ub)
     constraints = _build_linear_constraints(a_ub, b_ub, a_eq, b_eq)
     constraints += _build_nonlinear_constraints(c_ub, c_eq, x0)
-    res = pdfo_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints)
+    res = scipy_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints)
+    # res = pdfo_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints)
     return res.x
 
 
@@ -105,33 +106,160 @@ def _build_nonlinear_constraints(c_ub, c_eq, x0):
 
 
 if __name__ == '__main__':
-    # Consider only problems with up to 50 variables and 5000 constraints.
-    set_cutest_problem_options(n_max=50, m_max=5000)
+    # Run the benchmark on all unconstrained problems with up to 50 variables.
+    benchmark(
+        [cobyqa, newuoa, cobyla],
+        solver_names=['COBYQA', 'NEWUOA', 'COBYLA'],
+        benchmark_id='out_unconstrained',
+        maxdim=3,
+    )
+    benchmark(
+        [cobyqa, newuoa, cobyla],
+        solver_names=['COBYQA', 'NEWUOA', 'COBYLA'],
+        benchmark_id='out_unconstrained',
+        maxdim=50,
+        feature_name='noisy',
+    )
 
-    # Run the benchmark on all unconstrained problems.
-    cutest_problem_names = find_cutest_problems('unconstrained')
-    run_benchmark([cobyqa, newuoa, cobyla], ['COBYQA', 'NEWUOA', 'COBYLA'], cutest_problem_names, benchmark_id='unconstrained')
-    run_benchmark([cobyqa, newuoa, cobyla], ['COBYQA', 'NEWUOA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='unconstrained')
+    # Run the benchmark on all bound-constrained problems with up to 50 variables.
+    benchmark(
+        [cobyqa, bobyqa, cobyla],
+        solver_names=['COBYQA', 'BOBYQA', 'COBYLA'],
+        benchmark_id='out_bound-constrained',
+        ptype='b',
+        maxdim=50,
+        maxb=100,
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, bobyqa, cobyla],
+        solver_names=['COBYQA', 'BOBYQA', 'COBYLA'],
+        benchmark_id='out_bound-constrained',
+        ptype='b',
+        maxdim=50,
+        minb=1,
+        maxb=100,
+        feature_name='unrelaxable_constraints',
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, bobyqa, cobyla],
+        solver_names=['COBYQA', 'BOBYQA', 'COBYLA'],
+        benchmark_id='out_bound-constrained',
+        ptype='b',
+        maxdim=50,
+        maxb=100,
+        feature_name='noisy',
+        project_x0=True,
+    )
 
-    # Run the benchmark on all bound-constrained problems.
-    cutest_problem_names = find_cutest_problems('bound')
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='bound-constrained', project_x0=True)
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='bound-constrained', project_x0=True, at_least_one_bound_constraint=True)
-    run_benchmark([cobyqa, bobyqa, pybobyqa, cobyla], ['COBYQA', 'BOBYQA', 'Py-BOBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='bound-constrained', project_x0=True)
+    # Run the benchmark on all linearly constrained problems with up to 50 variables and 5000 constraints.
+    benchmark(
+        [cobyqa, lincoa, cobyla],
+        solver_names=['COBYQA', 'LINCOA', 'COBYLA'],
+        benchmark_id='out_linearly-constrained',
+        ptype='l',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, lincoa, cobyla],
+        solver_names=['COBYQA', 'LINCOA', 'COBYLA'],
+        benchmark_id='out_linearly-constrained',
+        ptype='l',
+        maxdim=50,
+        minb=1,
+        maxb=100,
+        maxlcon=5000,
+        feature_name='unrelaxable_constraints',
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, lincoa, cobyla],
+        solver_names=['COBYQA', 'LINCOA', 'COBYLA'],
+        benchmark_id='out_linearly-constrained',
+        ptype='l',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        feature_name='noisy',
+        project_x0=True,
+    )
 
-    # Run the benchmark on all linearly constrained problems.
-    cutest_problem_names = find_cutest_problems('adjacency linear')
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, benchmark_id='linearly-constrained', project_x0=True)
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='linearly-constrained', project_x0=True, at_least_one_bound_constraint=True)
-    run_benchmark([cobyqa, lincoa, cobyla], ['COBYQA', 'LINCOA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='linearly-constrained', project_x0=True)
+    # Run the benchmark on all nonlinearly constrained problems with up to 50 variables and 5000 constraints.
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_nonlinearly-constrained',
+        ptype='n',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_nonlinearly-constrained',
+        ptype='n',
+        maxdim=50,
+        minb=1,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        feature_name='unrelaxable_constraints',
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_nonlinearly-constrained',
+        ptype='n',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        feature_name='noisy',
+        project_x0=True,
+    )
 
-    # Run the benchmark on all nonlinearly constrained problems.
-    cutest_problem_names = find_cutest_problems('quadratic other')
-    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='nonlinearly-constrained')
-    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='unrelaxable_constraints', benchmark_id='nonlinearly-constrained', at_least_one_bound_constraint=True)
-    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='nonlinearly-constrained')
-
-    # Run the benchmark on all problems.
-    cutest_problem_names = find_cutest_problems('unconstrained bound adjacency linear quadratic other')
-    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, benchmark_id='all')
-    run_benchmark([cobyqa, cobyla], ['COBYQA', 'COBYLA'], cutest_problem_names, feature_name='noisy', benchmark_id='all')
+    # Run the benchmark on all problems with up to 50 variables and 5000 constraints.
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_all',
+        ptype='ubln',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_all',
+        ptype='ubln',
+        maxdim=50,
+        minb=1,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        feature_name='unrelaxable_constraints',
+        project_x0=True,
+    )
+    benchmark(
+        [cobyqa, cobyla],
+        solver_names=['COBYQA', 'COBYLA'],
+        benchmark_id='out_all',
+        ptype='ubln',
+        maxdim=50,
+        maxb=100,
+        maxlcon=5000,
+        maxnlcon=5000,
+        feature_name='noisy',
+        project_x0=True,
+    )
