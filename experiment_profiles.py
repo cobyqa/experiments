@@ -10,7 +10,9 @@ def uobyqa(fun, x0):
     """
     Solve an unconstrained optimization problem using UOBYQA.
     """
-    res = pdfo_minimize(fun, x0, method='uobyqa')
+    res = pdfo_minimize(fun, x0, method='uobyqa', options={
+        "maxfev": 500 * x0.size,
+    })
     return res.x
 
 
@@ -18,7 +20,9 @@ def newuoa(fun, x0):
     """
     Solve an unconstrained optimization problem using NEWUOA.
     """
-    res = pdfo_minimize(fun, x0, method='newuoa')
+    res = pdfo_minimize(fun, x0, method='newuoa', options={
+        "maxfev": 500 * x0.size,
+    })
     return res.x
 
 
@@ -27,7 +31,9 @@ def bobyqa(fun, x0, lb=None, ub=None):
     Solve a bound-constrained optimization problem using BOBYQA.
     """
     bounds = _build_bounds(lb, ub)
-    res = pdfo_minimize(fun, x0, method='bobyqa', bounds=bounds)
+    res = pdfo_minimize(fun, x0, method='bobyqa', bounds=bounds, options={
+        "maxfev": 500 * x0.size,
+    })
     return res.x
 
 
@@ -35,7 +41,7 @@ def pybobyqa(fun, x0, lb=None, ub=None):
     """
     Solve a bound-constrained optimization problem using Py-BOBYQA.
     """
-    res = pybobyqa_minimize(fun, x0, bounds=(lb, ub))
+    res = pybobyqa_minimize(fun, x0, bounds=(lb, ub), maxfun=500 * x0.size)
     return res.x
 
 
@@ -45,7 +51,9 @@ def lincoa(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None
     """
     bounds = _build_bounds(lb, ub)
     constraints = _build_linear_constraints(a_ub, b_ub, a_eq, b_eq)
-    res = pdfo_minimize(fun, x0, method='lincoa', bounds=bounds, constraints=constraints)
+    res = pdfo_minimize(fun, x0, method='lincoa', bounds=bounds, constraints=constraints, options={
+        "maxfev": 500 * x0.size,
+    })
     return res.x
 
 
@@ -56,8 +64,9 @@ def cobyla(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None
     bounds = _build_bounds(lb, ub)
     constraints = _build_linear_constraints(a_ub, b_ub, a_eq, b_eq)
     constraints += _build_nonlinear_constraints(c_ub, c_eq, x0)
-    res = scipy_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints)
-    # res = pdfo_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints)
+    res = scipy_minimize(fun, x0, method='cobyla', bounds=bounds, constraints=constraints, options={
+        "maxiter": 500 * x0.size,
+    })
     return res.x
 
 
@@ -68,7 +77,9 @@ def cobyqa(fun, x0, lb=None, ub=None, a_ub=None, b_ub=None, a_eq=None, b_eq=None
     bounds = _build_bounds(lb, ub)
     constraints = _build_linear_constraints(a_ub, b_ub, a_eq, b_eq)
     constraints += _build_nonlinear_constraints(c_ub, c_eq, x0)
-    res = cobyqa_minimize(fun, x0, bounds=bounds, constraints=constraints)
+    res = cobyqa_minimize(fun, x0, bounds=bounds, constraints=constraints, options={
+        "maxfev": 500 * x0.size,
+    })
     return res.x
 
 
